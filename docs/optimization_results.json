@@ -1,0 +1,36 @@
+{
+  "source_model": "vit_sports_finetuned",
+  "device": "cpu",
+  "batch_size": 1,
+  "num_warmup": 5,
+  "num_iters": 30,
+  "results": {
+    "pytorch_fp32": {
+      "size_mb": 327.62,
+      "mean_ms": 136.0,
+      "median_ms": 137.0,
+      "p95_ms": 144.47,
+      "p99_ms": 145.05,
+      "min_ms": 118.77,
+      "max_ms": 145.24
+    },
+    "onnx_fp32": {
+      "size_mb": 327.77,
+      "mean_ms": 108.49,
+      "median_ms": 109.99,
+      "p95_ms": 118.16,
+      "p99_ms": 119.5,
+      "min_ms": 83.0,
+      "max_ms": 119.96
+    },
+    "onnx_int8_dynamic": {
+      "size_mb": 83.43,
+      "mean_ms": 91.42,
+      "median_ms": 90.44,
+      "p95_ms": 115.43,
+      "p99_ms": 121.88,
+      "min_ms": 74.46,
+      "max_ms": 122.7
+    }
+  }
+}

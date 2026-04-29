@@ -1,0 +1,23 @@
+-r requirements.txt
+
+# Optimization / training (loose pins so Python 3.12+ / 3.13+ / 3.14+
+# pick up wheels that actually exist).
+torch>=2.4
+torchvision>=0.19
+transformers>=4.45
+datasets>=3.0
+accelerate>=1.0
+optimum[onnxruntime]>=1.23
+onnx>=1.18
+evaluate>=0.4.3
+
+# Testing
+pytest>=8.3
+pytest-asyncio>=0.24
+httpx>=0.27
+
+# Reporting (PDF + architecture diagram)
+matplotlib>=3.9
+
+# Dataset download
+kagglehub>=0.3

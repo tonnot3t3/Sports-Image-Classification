@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sports Image Classifier — ViT INT8</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='52' font-size='52'%3E%F0%9F%8F%80%3C/text%3E%3C/svg%3E" />
+  <style>
+    :root{
+      --bg:#0b1220;
+      --bg-2:#111a2e;
+      --card:#152138;
+      --border:#22304d;
+      --text:#e6edf7;
+      --text-dim:#9aa6bf;
+      --accent:#5b8cff;
+      --accent-2:#8b5cf6;
+      --good:#22c55e;
+      --warn:#f59e0b;
+      --bad:#ef4444;
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--text);background:radial-gradient(1200px 600px at 10% -10%,#1a2547 0%,transparent 60%),radial-gradient(900px 600px at 110% 10%,#2a1747 0%,transparent 55%),var(--bg);min-height:100vh}
+    a{color:var(--accent);text-decoration:none}
+    a:hover{text-decoration:underline}
+
+    header{padding:28px 24px 8px;text-align:center}
+    header h1{margin:0;font-size:30px;letter-spacing:.2px;background:linear-gradient(90deg,#7aa2ff,#c4b5fd);-webkit-background-clip:text;background-clip:text;color:transparent}
+    header p{margin:6px 0 0;color:var(--text-dim);font-size:14px}
+    header .meta{margin-top:10px;display:inline-flex;gap:10px;flex-wrap:wrap;justify-content:center}
+    .pill{font-size:12px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text-dim)}
+    .pill b{color:var(--text)}
+
+    main{max-width:1100px;margin:18px auto 60px;padding:0 16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px}
+
+    /* dropzone */
+    .drop{
+      border:2px dashed var(--border);border-radius:18px;padding:34px 20px;text-align:center;
+      transition:.2s border-color,.2s background;cursor:pointer;background:rgba(255,255,255,.02);
+    }
+    .drop:hover,.drop.drag{border-color:var(--accent);background:rgba(91,140,255,.08)}
+    .drop h2{margin:0 0 6px;font-size:18px}
+    .drop p{margin:0;color:var(--text-dim);font-size:13px}
+    .drop .hint{margin-top:10px;font-size:12px;color:var(--text-dim)}
+    .drop input[type=file]{display:none}
+
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;justify-content:center}
+    .btn{appearance:none;border:1px solid var(--border);background:linear-gradient(180deg,#1f2c4a,#172238);color:var(--text);padding:10px 16px;border-radius:10px;font-size:14px;cursor:pointer;transition:.15s transform,.15s background}
+    .btn:hover{transform:translateY(-1px)}
+    .btn.primary{background:linear-gradient(180deg,#5b8cff,#3b6def);border-color:#3b6def}
+    .btn.primary:hover{background:linear-gradient(180deg,#6b99ff,#4a78f1)}
+    .btn[disabled]{opacity:.5;cursor:not-allowed;transform:none}
+
+    .summary{display:none;margin-top:16px;gap:12px;flex-wrap:wrap;justify-content:center}
+    .summary .pill b{color:#a7f3d0}
+
+    /* results grid */
+    #results{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-top:18px}
+    .item{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+    .thumb{aspect-ratio:1/1;background:#0c1424 center/cover no-repeat;border-bottom:1px solid var(--border);position:relative}
+    .thumb .badge{position:absolute;top:8px;left:8px;font-size:11px;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,.55);border:1px solid var(--border);color:#cfd8ee}
+    .thumb .status{position:absolute;top:8px;right:8px;font-size:11px;padding:3px 8px;border-radius:999px}
+    .status.pending{background:rgba(245,158,11,.18);color:#fde68a;border:1px solid rgba(245,158,11,.4)}
+    .status.loading{background:rgba(91,140,255,.2);color:#bfd1ff;border:1px solid rgba(91,140,255,.45)}
+    .status.done{background:rgba(34,197,94,.18);color:#bbf7d0;border:1px solid rgba(34,197,94,.4)}
+    .status.error{background:rgba(239,68,68,.18);color:#fecaca;border:1px solid rgba(239,68,68,.4)}
+
+    .body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:10px}
+    .filename{font-size:13px;color:var(--text-dim);word-break:break-all}
+    .top1{display:flex;align-items:baseline;gap:8px}
+    .top1 .label{font-size:18px;font-weight:600;text-transform:capitalize}
+    .top1 .score{margin-left:auto;font-variant-numeric:tabular-nums;color:#a7f3d0;font-weight:600}
+    .meter{display:flex;flex-direction:column;gap:6px;margin-top:2px}
+    .row{display:grid;grid-template-columns:1fr auto;gap:8px;font-size:12px;align-items:center}
+    .row .name{text-transform:capitalize;color:#cfd8ee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .row .pct{font-variant-numeric:tabular-nums;color:var(--text-dim)}
+    .bar{grid-column:1/-1;height:6px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden}
+    .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:999px;transition:width .35s ease}
+    .footer{display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);border-top:1px dashed var(--border);padding-top:8px}
+    .err{color:#fecaca;font-size:13px}
+
+    .empty{text-align:center;color:var(--text-dim);padding:30px 12px;border:1px dashed var(--border);border-radius:14px;margin-top:18px}
+    footer{text-align:center;color:var(--text-dim);font-size:12px;padding:18px}
+    footer code{background:rgba(255,255,255,.06);padding:1px 6px;border-radius:6px}
+
+    @media (max-width:600px){
+      header h1{font-size:24px}
+      .drop{padding:24px 14px}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🏆 Sports Image Classifier</h1>
+    <p>Fine-tuned <b>ViT-base-patch16-224</b> · INT8 ONNX · 100 sport classes</p>
+    <div class="meta">
+      <span class="pill" id="m-model">Model: <b id="m-model-name">…</b></span>
+      <span class="pill" id="m-classes">Classes: <b id="m-num-labels">…</b></span>
+      <span class="pill" id="m-workers">Workers: <b id="m-workers-n">…</b></span>
+      <span class="pill"><a href="/docs">API docs ↗</a></span>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <label class="drop" id="drop">
+        <input id="file-input" type="file" accept="image/jpeg,image/png,image/webp,image/bmp" multiple />
+        <h2>Drop sports images here, or click to choose</h2>
+        <p>Multiple images supported · JPG · PNG · WEBP · BMP · max 5 MB each</p>
+        <div class="hint">Each image is sent to <code>POST /predict</code> in parallel.</div>
+      </label>
+
+      <div class="actions">
+        <button id="btn-predict" class="btn primary" disabled>Classify all</button>
+        <button id="btn-clear" class="btn" disabled>Clear</button>
+      </div>
+
+      <div class="summary" id="summary">
+        <span class="pill">Images: <b id="s-total">0</b></span>
+        <span class="pill">Done: <b id="s-done">0</b></span>
+        <span class="pill">Errors: <b id="s-err">0</b></span>
+        <span class="pill">Avg latency: <b id="s-avg">—</b></span>
+      </div>
+    </section>
+
+    <div id="results"></div>
+    <div id="empty" class="empty">No images yet — pick a few sports photos to get started.</div>
+  </main>
+
+  <footer>
+    Built with FastAPI + ONNX Runtime · <a href="/health">/health</a> · <a href="/info">/info</a>
+  </footer>
+
+  <script>
+    const TOP_K_DISPLAY = 5;
+    const CONCURRENCY = 4;
+    const MAX_BYTES = 5 * 1024 * 1024;
+    const ALLOWED_MIMES = ["image/jpeg","image/png","image/webp","image/bmp"];
+
+    const $ = (s) => document.querySelector(s);
+    const drop = $("#drop");
+    const fileInput = $("#file-input");
+    const btnPredict = $("#btn-predict");
+    const btnClear = $("#btn-clear");
+    const results = $("#results");
+    const empty = $("#empty");
+    const summary = $("#summary");
+
+    /** items: { id, file, url, status, predictions, inference_ms, error } */
+    let items = [];
+    let nextId = 1;
+
+    // ---- info banner -----------------------------------------------------
+    fetch("/info").then(r => r.json()).then(j => {
+      $("#m-model-name").textContent = (j.model_path || "").split(/[\\/]/).pop() || "—";
+      $("#m-num-labels").textContent = j.num_labels;
+      $("#m-workers-n").textContent = j.workers;
+    }).catch(() => {});
+
+    // ---- drag/drop -------------------------------------------------------
+    ["dragenter","dragover"].forEach(e => drop.addEventListener(e, ev => {
+      ev.preventDefault(); ev.stopPropagation(); drop.classList.add("drag");
+    }));
+    ["dragleave","drop"].forEach(e => drop.addEventListener(e, ev => {
+      ev.preventDefault(); ev.stopPropagation(); drop.classList.remove("drag");
+    }));
+    drop.addEventListener("drop", ev => addFiles(ev.dataTransfer.files));
+    fileInput.addEventListener("change", () => addFiles(fileInput.files));
+
+    function addFiles(fileList){
+      const added = [];
+      for (const f of fileList){
+        const ok = ALLOWED_MIMES.includes(f.type);
+        const tooBig = f.size > MAX_BYTES;
+        const it = {
+          id: nextId++,
+          file: f,
+          url: URL.createObjectURL(f),
+          status: ok && !tooBig ? "pending" : "error",
+          predictions: null,
+          inference_ms: null,
+          error: !ok ? `Unsupported MIME: ${f.type || "unknown"}` :
+                 tooBig ? `Too large: ${(f.size/1048576).toFixed(2)} MB > 5 MB` : null,
+        };
+        items.push(it);
+        added.push(it);
+      }
+      render();
+      fileInput.value = "";
+      if (items.length) {
+        btnPredict.disabled = items.every(i => i.status !== "pending");
+        btnClear.disabled = false;
+      }
+    }
+
+    btnClear.addEventListener("click", () => {
+      items.forEach(i => URL.revokeObjectURL(i.url));
+      items = [];
+      btnPredict.disabled = true;
+      btnClear.disabled = true;
+      render();
+    });
+
+    btnPredict.addEventListener("click", async () => {
+      btnPredict.disabled = true;
+      btnClear.disabled = true;
+      const queue = items.filter(i => i.status === "pending");
+      let i = 0;
+      const workers = Array.from({length: Math.min(CONCURRENCY, queue.length)}, async () => {
+        while (i < queue.length){
+          const idx = i++;
+          await runOne(queue[idx]);
+        }
+      });
+      await Promise.all(workers);
+      btnClear.disabled = false;
+    });
+
+    async function runOne(item){
+      item.status = "loading";
+      renderItem(item);
+      const fd = new FormData();
+      fd.append("file", item.file, item.file.name);
+      try {
+        const res = await fetch("/predict", { method:"POST", body: fd });
+        const json = await res.json();
+        if (!res.ok){
+          throw new Error(json.detail || `HTTP ${res.status}`);
+        }
+        item.predictions = json.predictions || [];
+        item.inference_ms = json.inference_ms;
+        item.status = "done";
+      } catch(err){
+        item.status = "error";
+        item.error = err.message || String(err);
+      }
+      renderItem(item);
+      updateSummary();
+    }
+
+    // ---- rendering -------------------------------------------------------
+    function render(){
+      results.innerHTML = "";
+      if (!items.length){
+        empty.style.display = "block";
+        summary.style.display = "none";
+        return;
+      }
+      empty.style.display = "none";
+      summary.style.display = "flex";
+      for (const it of items) results.appendChild(buildItem(it));
+      updateSummary();
+    }
+
+    function buildItem(it){
+      const card = document.createElement("article");
+      card.className = "item";
+      card.id = `item-${it.id}`;
+      card.innerHTML = `
+        <div class="thumb" style="background-image:url('${it.url}')">
+          <span class="badge">#${it.id}</span>
+          <span class="status ${it.status}">${labelStatus(it.status)}</span>
+        </div>
+        <div class="body">
+          <div class="filename" title="${escapeHtml(it.file.name)}">${escapeHtml(it.file.name)}</div>
+          <div class="content"></div>
+        </div>`;
+      fillContent(card.querySelector(".content"), it);
+      return card;
+    }
+
+    function renderItem(it){
+      const el = document.getElementById(`item-${it.id}`);
+      if (!el) return;
+      el.querySelector(".status").className = `status ${it.status}`;
+      el.querySelector(".status").textContent = labelStatus(it.status);
+      fillContent(el.querySelector(".content"), it);
+    }
+
+    function fillContent(host, it){
+      if (it.status === "pending"){
+        host.innerHTML = `<div class="filename">Waiting…</div>`;
+        return;
+      }
+      if (it.status === "loading"){
+        host.innerHTML = `<div class="filename">Classifying…</div>`;
+        return;
+      }
+      if (it.status === "error"){
+        host.innerHTML = `<div class="err">⚠ ${escapeHtml(it.error || "Unknown error")}</div>`;
+        return;
+      }
+      // done
+      const top = it.predictions || [];
+      if (!top.length){
+        host.innerHTML = `<div class="err">No predictions returned.</div>`;
+        return;
+      }
+      const t1 = top[0];
+      const rest = top.slice(0, TOP_K_DISPLAY);
+      host.innerHTML = `
+        <div class="top1">
+          <span class="label">${escapeHtml(t1.label)}</span>
+          <span class="score">${(t1.score*100).toFixed(1)}%</span>
+        </div>
+        <div class="meter">
+          ${rest.map(p => `
+            <div class="row"><span class="name">${escapeHtml(p.label)}</span><span class="pct">${(p.score*100).toFixed(1)}%</span>
+              <span class="bar"><i style="width:${(p.score*100).toFixed(1)}%"></i></span>
+            </div>`).join("")}
+        </div>
+        <div class="footer">
+          <span>Top-${rest.length}</span>
+          <span>${it.inference_ms ? it.inference_ms.toFixed(1) + " ms" : ""}</span>
+        </div>`;
+    }
+
+    function labelStatus(s){
+      return ({pending:"queued",loading:"classifying…",done:"done",error:"error"})[s] || s;
+    }
+
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+    }
+
+    function updateSummary(){
+      const total = items.length;
+      const done = items.filter(i => i.status === "done").length;
+      const err = items.filter(i => i.status === "error").length;
+      const lats = items.filter(i => i.status === "done" && typeof i.inference_ms === "number").map(i => i.inference_ms);
+      const avg = lats.length ? (lats.reduce((a,b)=>a+b,0)/lats.length).toFixed(1) + " ms" : "—";
+      $("#s-total").textContent = total;
+      $("#s-done").textContent = done;
+      $("#s-err").textContent = err;
+      $("#s-avg").textContent = avg;
+      // Re-enable Classify all if there are still pending items
+      btnPredict.disabled = !items.some(i => i.status === "pending");
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+# Hugging Face Spaces metadata.
+# Place this file at the repository root when pushing to a Space.
+# More: https://huggingface.co/docs/hub/spaces-config-reference
+title: Sports Image Classification API
+emoji: "🏅"
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+license: apache-2.0
+short_description: ViT-base-patch16-224 INT8 ONNX -- 100 sports classes.

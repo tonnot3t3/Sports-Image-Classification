@@ -1,0 +1,99 @@
+{
+  "info": {
+    "name": "Sports ViT API",
+    "description": "Postman collection for the High-Throughput Image Classification Service. Switch between Local and Cloud environments using the `{{baseUrl}}` variable below.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:7860",
+      "description": "Base URL for the API. Change to https://<user>-<space>.hf.space for Hugging Face Spaces."
+    },
+    {
+      "key": "imagePath",
+      "value": "tests/fixtures/tennis.jpg",
+      "description": "Local path to a sample image used by the /predict request. Update via Postman's file picker."
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+      },
+      "response": []
+    },
+    {
+      "name": "Info",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{baseUrl}}/info", "host": ["{{baseUrl}}"], "path": ["info"] }
+      },
+      "response": []
+    },
+    {
+      "name": "Predict (image upload)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": "{{imagePath}}",
+              "description": "JPEG/PNG/WEBP/BMP image (≤ 5 MB)."
+            }
+          ]
+        },
+        "url": { "raw": "{{baseUrl}}/predict", "host": ["{{baseUrl}}"], "path": ["predict"] }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "var json = pm.response.json();",
+              "pm.test('payload has predictions array', function () { pm.expect(json.predictions).to.be.an('array').that.is.not.empty; });",
+              "pm.test('top prediction has score in [0,1]', function () { var s = json.predictions[0].score; pm.expect(s).to.be.at.least(0); pm.expect(s).to.be.at.most(1); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Predict – wrong MIME (expect 415)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "file", "type": "text", "value": "hello world", "contentType": "text/plain" }
+          ]
+        },
+        "url": { "raw": "{{baseUrl}}/predict", "host": ["{{baseUrl}}"], "path": ["predict"] }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 415', function () { pm.response.to.have.status(415); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ]
+}

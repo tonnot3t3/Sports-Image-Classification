@@ -1,0 +1,40 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.so
+.venv/
+venv/
+.env
+.env.local
+
+# Raw dataset / training checkpoints (NEVER commit these)
+data/
+sports_dataset/
+vit_sports_finetuned/
+
+# The final INT8 ONNX is intentionally tracked via Git LFS (.gitattributes)
+# so HF Spaces can pull it on deploy. Keep PyTorch checkpoints out though:
+*.pt
+*.pth
+*.bin
+!onnx_models/*.onnx
+!onnx_models/.gitkeep
+
+# Test / build artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# JMeter outputs
+jmeter/results/
+jmeter/*.jtl
+jmeter/report/
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
