@@ -30,7 +30,14 @@ def project_root() -> Path:
 
 @pytest.fixture(scope="session")
 def model_available() -> bool:
-    return MODEL_PATH.exists() and LABELS_PATH.exists()
+    """True only if the *real* ONNX model is on disk.
+
+    On CI (without `lfs: true`) the file may exist as a small Git LFS
+    pointer (~ 130 bytes).  We require at least 1 MB to call it real.
+    """
+    if not (MODEL_PATH.exists() and LABELS_PATH.exists()):
+        return False
+    return MODEL_PATH.stat().st_size > 1_000_000
 
 
 @pytest.fixture
