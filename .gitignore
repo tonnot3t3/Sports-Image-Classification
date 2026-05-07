@@ -38,3 +38,7 @@ jmeter/report/
 .vscode/
 .idea/
 .DS_Store
+
+# JMeter runtime
+jmeter.log
+jmeter/results/
